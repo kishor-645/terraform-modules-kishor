@@ -17,6 +17,7 @@ resource "azurerm_firewall_policy_rule_collection_group" "network_rules" {
         source_addresses      = rule.value.source_addresses
         destination_addresses = rule.value.destination_addresses
         destination_ports     = rule.value.destination_ports
+        destination_fqdns     = rule.value.destination_fqdns
       }
     }
   }

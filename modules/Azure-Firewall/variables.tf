@@ -21,6 +21,13 @@ variable "firewall_sku_tier" {
   default     = "Standard"
 }
 
+variable "private_ip_ranges" {
+  description = "List of private IP ranges for SNAT"
+  type        = list(string)
+  default     = []
+}
+
+# DNS Configuration
 variable "dns_proxy_enabled" {
   description = "Enable DNS proxy"
   type        = bool
@@ -28,15 +35,96 @@ variable "dns_proxy_enabled" {
 }
 
 variable "dns_servers" {
-  description = "List of DNS servers"
+  description = "List of custom DNS servers (empty for Azure default)"
   type        = list(string)
   default     = []
 }
 
+# Threat Intelligence Configuration
 variable "threat_intelligence_mode" {
   description = "Threat intelligence mode (Alert, Deny, Off)"
   type        = string
   default     = "Alert"
+}
+
+variable "threat_intelligence_allowlist_enabled" {
+  description = "Enable threat intelligence allowlist"
+  type        = bool
+  default     = false
+}
+
+variable "threat_intelligence_allowlist_ips" {
+  description = "List of IP addresses to allowlist in threat intelligence"
+  type        = list(string)
+  default     = []
+}
+
+variable "threat_intelligence_allowlist_fqdns" {
+  description = "List of FQDNs to allowlist in threat intelligence"
+  type        = list(string)
+  default     = []
+}
+
+# TLS Inspection Configuration (Premium SKU only)
+variable "tls_inspection_enabled" {
+  description = "Enable TLS inspection (requires Premium SKU)"
+  type        = bool
+  default     = false
+}
+
+variable "tls_certificate_key_vault_secret_id" {
+  description = "Key Vault secret ID for TLS certificate"
+  type        = string
+  default     = ""
+}
+
+variable "tls_certificate_name" {
+  description = "TLS certificate name"
+  type        = string
+  default     = "tls-cert"
+}
+
+variable "identity_ids" {
+  description = "List of user assigned identity IDs for TLS inspection"
+  type        = list(string)
+  default     = []
+}
+
+# IDPS Configuration (Premium SKU only)
+variable "idps_mode" {
+  description = "IDPS mode (Alert, Deny, Off)"
+  type        = string
+  default     = "Off"
+}
+
+variable "idps_private_ranges" {
+  description = "List of private IP ranges for IDPS"
+  type        = list(string)
+  default     = []
+}
+
+variable "idps_signature_overrides" {
+  description = "List of IDPS signature overrides"
+  type = list(object({
+    id    = string
+    state = string
+  }))
+  default = []
+}
+
+variable "idps_traffic_bypass" {
+  description = "List of IDPS traffic bypass rules"
+  type = list(object({
+    name                  = string
+    protocol              = string
+    description           = string
+    destination_addresses = list(string)
+    destination_ip_groups = list(string)
+    destination_ports     = list(string)
+    source_addresses      = list(string)
+    source_ip_groups      = list(string)
+  }))
+  default = []
 }
 
 # Firewall Variables
@@ -82,6 +170,8 @@ variable "application_rules" {
     destination_fqdns = list(string)
     protocol_type     = string
     protocol_port     = number
+    terminate_tls     = bool
+    web_categories    = list(string)
   }))
   default = []
 }
@@ -107,6 +197,7 @@ variable "network_rules" {
     source_addresses      = list(string)
     destination_addresses = list(string)
     destination_ports     = list(string)
+    destination_fqdns     = list(string)
   }))
   default = []
 }

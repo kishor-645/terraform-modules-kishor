@@ -16,6 +16,8 @@ resource "azurerm_firewall_policy_rule_collection_group" "app_rules" {
 
         source_addresses  = rule.value.source_addresses
         destination_fqdns = rule.value.destination_fqdns
+        terminate_tls     = rule.value.terminate_tls
+        web_categories    = rule.value.web_categories
 
         protocols {
           type = rule.value.protocol_type

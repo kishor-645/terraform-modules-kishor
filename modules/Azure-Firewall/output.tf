@@ -22,3 +22,23 @@ output "firewall_policy_name" {
   description = "Firewall policy name"
   value       = azurerm_firewall_policy.policy.name
 }
+
+output "dns_proxy_enabled" {
+  description = "DNS proxy status"
+  value       = var.dns_proxy_enabled
+}
+
+output "threat_intelligence_mode" {
+  description = "Threat intelligence mode"
+  value       = var.threat_intelligence_mode
+}
+
+output "tls_inspection_enabled" {
+  description = "TLS inspection status"
+  value       = var.tls_inspection_enabled
+}
+
+output "idps_mode" {
+  description = "IDPS mode"
+  value       = var.idps_mode
+}
