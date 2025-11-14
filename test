@@ -1,0 +1,10 @@
+tf-modules/
+└── modules/
+    └── Azure-Firewall/
+        ├── firewall.tf
+        ├── firewall_policy.tf
+        ├── application_rules.tf
+        ├── network_rules.tf
+        ├── nat_rules.tf
+        ├── variables.tf
+        └── output.tf
