@@ -2,36 +2,50 @@
 resource "azurerm_public_ip" "firewall" {
   name                = "pip-firewall"
   resource_group_name = "rg-network"
-  location            = "eastus"
+  location            = "canadacentral"
   allocation_method   = "Static"
   sku                 = "Standard"
   zones               = ["1", "2", "3"]
 }
 
-# Firewall Subnet
-resource "azurerm_subnet" "firewall" {
-  name                 = "AzureFirewallSubnet"
-  resource_group_name  = "rg-network"
-  virtual_network_name = "vnet-prod"
-  address_prefixes     = ["10.0.1.0/26"]
+// Create VNet and subnet using the Vnet module
+module "vnet" {
+  source = "../../modules/Vnet"
+
+  resource_group_name = "rg-network"
+  location            = "canadacentral"
+
+  vnets = {
+    prod = {
+      name = "vnet-prod"
+      address_space = ["10.0.0.0/16"]
+      subnets = {
+        firewall = {
+          name           = "AzureFirewallSubnet"
+          address_prefix = "10.0.1.0/26"
+        }
+      }
+    }
+  }
 }
 
 # Azure Firewall Module
 module "azure_firewall" {
-  source = "./tf-modules/modules/Azure-Firewall"
+  source = "../../modules/Azure-Firewall"
 
   resource_group_name  = "rg-firewall-prod"
-  location             = "eastus"
+  location             = "canadacentral"
   firewall_name        = "fw-prod"
   firewall_policy_name = "fw-policy-prod"
   firewall_sku_tier    = "Standard"
   zones                = ["1", "2", "3"]
 
-  subnet_id            = azurerm_subnet.firewall.id
+  subnet_id            = module.vnet.subnet_ids["prod"]["AzureFirewallSubnet"]
   public_ip_address_id = azurerm_public_ip.firewall.id
 
   dns_proxy_enabled = true
   dns_servers       = ["168.63.129.16"]
+  private_ip_ranges = ["10.0.0.0/8"]
 
   # Application Rules
   application_rules = [
@@ -41,6 +55,8 @@ module "azure_firewall" {
       destination_fqdns = ["*.microsoft.com", "*.windows.net"]
       protocol_type     = "Https"
       protocol_port     = 443
+      terminate_tls     = false
+      web_categories    = []
     }
   ]
 
@@ -52,6 +68,7 @@ module "azure_firewall" {
       source_addresses      = ["10.0.0.0/16"]
       destination_addresses = ["*"]
       destination_ports     = ["80", "443"]
+      destination_fqdns     = []
     }
   ]
 
@@ -66,6 +83,10 @@ module "azure_firewall" {
       translated_address  = "10.0.1.10"
       translated_port     = 22
     }
+  ]
+
+ depends_on = [
+    module.vnet
   ]
 }
 
