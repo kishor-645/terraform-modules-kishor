@@ -1,7 +1,7 @@
 # Public IP for Firewall
 resource "azurerm_public_ip" "firewall" {
-  name                = "pip-firewall"
-  resource_group_name = "rg-network"
+  name                = "firewall-terraform-test-pip"
+  resource_group_name = "multi-region-terraform-test-rg"
   location            = "canadacentral"
   allocation_method   = "Static"
   sku                 = "Standard"
@@ -12,13 +12,14 @@ resource "azurerm_public_ip" "firewall" {
 module "vnet" {
   source = "../../modules/Vnet"
 
-  resource_group_name = "rg-network"
+  resource_group_name = "multi-region-terraform-test-rg"
   location            = "canadacentral"
 
   vnets = {
-    prod = {
-      name = "vnet-prod"
+    vnet-test-tf = {
+      name = "vnet-test-terraform"
       address_space = ["10.0.0.0/16"]
+      enable_ddos_protection = false
       subnets = {
         firewall = {
           name           = "AzureFirewallSubnet"
@@ -33,15 +34,17 @@ module "vnet" {
 module "azure_firewall" {
   source = "../../modules/Azure-Firewall"
 
-  resource_group_name  = "rg-firewall-prod"
+  resource_group_name  = "multi-region-terraform-test-rg"
   location             = "canadacentral"
-  firewall_name        = "fw-prod"
-  firewall_policy_name = "fw-policy-prod"
-  firewall_sku_tier    = "Standard"
+  firewall_name        = "fw-multirg-test-terraform"
+  firewall_policy_name = "fw-policy-test-terraform"
+  firewall_sku_tier    = "Premium"
   zones                = ["1", "2", "3"]
 
-  subnet_id            = module.vnet.subnet_ids["prod"]["AzureFirewallSubnet"]
+  subnet_id            = module.vnet.subnet_ids["vnet-test-tf"]["AzureFirewallSubnet"]
   public_ip_address_id = azurerm_public_ip.firewall.id
+  
+  threat_intelligence_mode = "Deny"
 
   dns_proxy_enabled = true
   dns_servers       = ["168.63.129.16"]

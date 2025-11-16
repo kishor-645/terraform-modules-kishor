@@ -3,6 +3,7 @@ variable "vnets" {
   type = map(object({
     name = string
     address_space       = list(string)
+    enable_ddos_protection = bool
     subnets = map(object({
       name           = string
       address_prefix = string
