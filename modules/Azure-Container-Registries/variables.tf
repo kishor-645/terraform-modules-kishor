@@ -32,3 +32,27 @@ variable "public_network_access_enabled" {
   type = bool
   default = false
 }
+
+variable "tags" {
+  description = "Tags to apply to the ACR resource."
+  type        = map(string)
+  default     = {}
+}
+
+variable "encryption_key_vault_key_id" {
+  description = "(Optional) The resource ID of the Key Vault Key to use for customer-managed encryption (CMK). Provide null to skip CMK."
+  type        = string
+  default     = null
+}
+
+variable "encryption_identity_id" {
+  description = "(Optional) The resource id of a user-assigned managed identity that has access to the key vault key. Provide null to skip setting an identity."
+  type        = string
+  default     = null
+}
+
+variable "log_analytics_workspace_id" {
+  description = "(Optional) The resource id of the Log Analytics workspace to send diagnostics to. Provide null to skip creating diagnostic settings."
+  type        = string
+  default     = null
+}
