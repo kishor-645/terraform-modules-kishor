@@ -1,16 +1,3 @@
-tf-modules/
-└── modules/
-    └── Azure-Firewall/
-        ├── firewall.tf
-        ├── firewall_policy.tf
-        ├── application_rules.tf
-        ├── network_rules.tf
-        ├── nat_rules.tf
-        ├── variables.tf
-        └── output.tf
-
-------------------------------
-
 # Public IP for Firewall
 resource "azurerm_public_ip" "firewall" {
   name                = "firewall-terraform-test-pip"
