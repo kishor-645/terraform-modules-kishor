@@ -8,3 +8,105 @@ tf-modules/
         ├── nat_rules.tf
         ├── variables.tf
         └── output.tf
+
+------------------------------
+
+# Public IP for Firewall
+resource "azurerm_public_ip" "firewall" {
+  name                = "firewall-terraform-test-pip"
+  resource_group_name = "multi-region-terraform-test-rg"
+  location            = "canadacentral"
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  zones               = ["1", "2", "3"]
+}
+
+// Create VNet and subnet using the Vnet module
+module "vnet" {
+  source = "../../modules/Vnet"
+
+  resource_group_name = "multi-region-terraform-test-rg"
+  location            = "canadacentral"
+
+  vnets = {
+    vnet-test-tf = {
+      name = "vnet-test-terraform"
+      address_space = ["10.0.0.0/16"]
+      enable_ddos_protection = false
+      subnets = {
+        firewall = {
+          name           = "AzureFirewallSubnet"
+          address_prefix = "10.0.1.0/26"
+        }
+      }
+    }
+  }
+}
+
+# Azure Firewall Module
+module "azure_firewall" {
+  source = "../../modules/Azure-Firewall"
+
+  resource_group_name  = "multi-region-terraform-test-rg"
+  location             = "canadacentral"
+  firewall_name        = "fw-multirg-test-terraform"
+  firewall_policy_name = "fw-policy-test-terraform"
+  firewall_sku_tier    = "Premium"
+  zones                = ["1", "2", "3"]
+
+  subnet_id            = module.vnet.subnet_ids["vnet-test-tf"]["AzureFirewallSubnet"]
+  public_ip_address_id = azurerm_public_ip.firewall.id
+  
+  threat_intelligence_mode = "Deny"
+
+  dns_proxy_enabled = true
+  dns_servers       = ["168.63.129.16"]
+  private_ip_ranges = ["10.0.0.0/8"]
+
+  # Application Rules
+  application_rules = [
+    {
+      name              = "allow-microsoft-services"
+      source_addresses  = ["10.0.0.0/16"]
+      destination_fqdns = ["*.microsoft.com", "*.windows.net"]
+      protocol_type     = "Https"
+      protocol_port     = 443
+      terminate_tls     = false
+      web_categories    = []
+    }
+  ]
+
+  # Network Rules
+  network_rules = [
+    {
+      name                  = "allow-web"
+      protocols             = ["TCP"]
+      source_addresses      = ["10.0.0.0/16"]
+      destination_addresses = ["*"]
+      destination_ports     = ["80", "443"]
+      destination_fqdns     = []
+    }
+  ]
+
+  # NAT Rules
+  nat_rules = [
+    {
+      name                = "ssh-jumpbox"
+      protocols           = ["TCP"]
+      source_addresses    = ["*"]
+      destination_address = azurerm_public_ip.firewall.ip_address
+      destination_ports   = ["2222"]
+      translated_address  = "10.0.1.10"
+      translated_port     = 22
+    }
+  ]
+
+ depends_on = [
+    module.vnet
+  ]
+}
+
+# Outputs
+output "firewall_private_ip" {
+  value = module.azure_firewall.firewall_private_ip
+}

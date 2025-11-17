@@ -50,9 +50,3 @@ variable "encryption_identity_id" {
   type        = string
   default     = null
 }
-
-variable "log_analytics_workspace_id" {
-  description = "(Optional) The resource id of the Log Analytics workspace to send diagnostics to. Provide null to skip creating diagnostic settings."
-  type        = string
-  default     = null
-}

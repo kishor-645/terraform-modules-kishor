@@ -1,19 +1,3 @@
-<img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" style="height:64px;margin-right:32px"/>
-
-# see i crated this ACR module i want some examples like how we can use this module with diff diff capability or scenario like that i need some example terraform codes for root module call. it should be in simple way.
-
-resource "azurerm_container_registry" "acr" {
-name                         = var.acr_name
-resource_group_name          = var.resource_group_name
-location                     = var.location
-sku                          = var.sku
-admin_enabled                = var.admin_enabled
-public_network_access_enabled = var.public_network_access_enabled
-
-# Optional tags (fully dynamic)
-
-tags = var.tags
-
 # Optional customer-managed key (CMK)
 
 # This will be created only when `encryption_key_vault_key_id` is provided.

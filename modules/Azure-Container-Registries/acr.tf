@@ -28,23 +28,18 @@ resource "azurerm_container_registry" "acr" {
   }
 }
 
-# Diagnostic settings: optional, created only when a Log Analytics workspace id is provided
-resource "azurerm_monitor_diagnostic_setting" "acr" {
-  count = var.log_analytics_workspace_id != null ? 1 : 0
-
-  name                       = "diag-${var.acr_name}"
-  target_resource_id         = azurerm_container_registry.acr.id
-  log_analytics_workspace_id = var.log_analytics_workspace_id
-
-  enabled_log {
-    category = "ContainerRegistryRepositoryEvents"
-  }
-
-  enabled_log {
-    category = "ContainerRegistryLoginEvents"
-  }
-
-  enabled_metric {
-    category = "AllMetrics"
-  }
-}
+// Diagnostic settings should be created centrally using the `Diagnostic-Settings` module
+// Example usage from a root module:
+//
+// module "acr" {
+//   source = "../modules/Azure-Container-Registries"
+//   ...
+// }
+//
+// module "acr_diags" {
+//   source = "../modules/Diagnostic-Settings"
+//   target_resource_id         = module.acr.acr_id
+//   log_analytics_workspace_id = var.central_log_analytics_workspace_id
+//   enabled_logs = ["ContainerRegistryRepositoryEvents", "ContainerRegistryLoginEvents"]
+//   enabled_metrics = ["AllMetrics"]
+// }

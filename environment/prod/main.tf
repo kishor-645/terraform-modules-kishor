@@ -1,99 +1,73 @@
-# Public IP for Firewall
-resource "azurerm_public_ip" "firewall" {
-  name                = "firewall-terraform-test-pip"
+# ========================================
+# Log Analytics Workspace
+# ========================================
+module "mylog" {
+  source = "../../modules/Log-Analytics-Workspace"
+
+  workspace_name      = "multirg-loganalytics-tf-test"
   resource_group_name = "multi-region-terraform-test-rg"
   location            = "canadacentral"
-  allocation_method   = "Static"
-  sku                 = "Standard"
-  zones               = ["1", "2", "3"]
-}
+  sku                 = "PerGB2018"
+  retention_in_days   = 30
 
-// Create VNet and subnet using the Vnet module
-module "vnet" {
-  source = "../../modules/Vnet"
-
-  resource_group_name = "multi-region-terraform-test-rg"
-  location            = "canadacentral"
-
-  vnets = {
-    vnet-test-tf = {
-      name = "vnet-test-terraform"
-      address_space = ["10.0.0.0/16"]
-      enable_ddos_protection = false
-      subnets = {
-        firewall = {
-          name           = "AzureFirewallSubnet"
-          address_prefix = "10.0.1.0/26"
-        }
-      }
-    }
+  tags = {
+    Environment = "Development"
+    ManagedBy   = "Terraform"
   }
 }
 
-# Azure Firewall Module
-module "azure_firewall" {
-  source = "../../modules/Azure-Firewall"
 
-  resource_group_name  = "multi-region-terraform-test-rg"
-  location             = "canadacentral"
-  firewall_name        = "fw-multirg-test-terraform"
-  firewall_policy_name = "fw-policy-test-terraform"
-  firewall_sku_tier    = "Premium"
-  zones                = ["1", "2", "3"]
 
-  subnet_id            = module.vnet.subnet_ids["vnet-test-tf"]["AzureFirewallSubnet"]
-  public_ip_address_id = azurerm_public_ip.firewall.id
-  
-  threat_intelligence_mode = "Deny"
+# ========================================
+# ACR - Container Registry
+# ========================================
+module "acr_dev" {
+  source = "../../modules/Azure-Container-Registries"
 
-  dns_proxy_enabled = true
-  dns_servers       = ["168.63.129.16"]
-  private_ip_ranges = ["10.0.0.0/8"]
+  acr_name                      = "acrdevtest001tftest"
+  resource_group_name           = "multi-region-terraform-test-rg"
+  location                      = "canadacentral"
+  sku                           = "Premium"
+  admin_enabled                 = true
+  public_network_access_enabled = true
 
-  # Application Rules
-  application_rules = [
-    {
-      name              = "allow-microsoft-services"
-      source_addresses  = ["10.0.0.0/16"]
-      destination_fqdns = ["*.microsoft.com", "*.windows.net"]
-      protocol_type     = "Https"
-      protocol_port     = 443
-      terminate_tls     = false
-      web_categories    = []
-    }
-  ]
-
-  # Network Rules
-  network_rules = [
-    {
-      name                  = "allow-web"
-      protocols             = ["TCP"]
-      source_addresses      = ["10.0.0.0/16"]
-      destination_addresses = ["*"]
-      destination_ports     = ["80", "443"]
-      destination_fqdns     = []
-    }
-  ]
-
-  # NAT Rules
-  nat_rules = [
-    {
-      name                = "ssh-jumpbox"
-      protocols           = ["TCP"]
-      source_addresses    = ["*"]
-      destination_address = azurerm_public_ip.firewall.ip_address
-      destination_ports   = ["2222"]
-      translated_address  = "10.0.1.10"
-      translated_port     = 22
-    }
-  ]
-
- depends_on = [
-    module.vnet
-  ]
+  tags = {
+    Environment = "Development"
+    ManagedBy   = "Terraform"
+  }
 }
 
-# Outputs
-output "firewall_private_ip" {
-  value = module.azure_firewall.firewall_private_ip
+# Diagnostic Settings for ACR
+module "acr_diagnostics" {
+  source = "../../modules/Diagnostic-Settings"
+
+  diagnostic_setting_name = "diag-acr-test"
+  target_resource_id      = module.acr_dev.acr_id
+  log_analytics_workspace_id = module.mylog.workspace_id
+
+  enabled_logs = [
+    # {
+    #   category       = "ContainerRegistryRepositoryEvents"
+    #   category_group = null
+    # },
+    # {
+    #   category       = "ContainerRegistryLoginEvents"
+    #   category_group = null
+    # },
+    {
+        category       = null
+        category_group = "audit"
+    }
+  ]
+
+  enabled_metrics = [
+    {
+      category = "AllMetrics"
+      enabled  = true
+    }
+  ]
+  depends_on = [
+    module.acr_dev,
+    module.mylog,
+  ]
 }
