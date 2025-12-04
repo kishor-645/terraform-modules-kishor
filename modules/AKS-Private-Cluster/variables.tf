@@ -254,6 +254,25 @@ variable "virtual_network_links" {
   }))
 }
 
+# Customer Managed Key (CMK) / Disk Encryption Set (DES) support
+variable "cmk_enabled" {
+  description = "Enable customer managed key (CMK) integration and DES creation for AKS resources"
+  type        = bool
+  default     = false
+}
+
+variable "cmk_key_vault_key_id" {
+  description = "The full resource id of the Key Vault Key to be used as CMK (if empty, CMK is not applied)"
+  type        = string
+  default     = ""
+}
+
+variable "des_identity_id" {
+  description = "Optional user-assigned identity id that will be used by the Disk Encryption Set. If empty, a UAI must be created separately and its id supplied."
+  type        = string
+  default     = ""
+}
+
 # variable "vnetlink_name" {
 #   description = "Vnetlink name"
 # }

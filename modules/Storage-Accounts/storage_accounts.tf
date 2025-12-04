@@ -11,5 +11,12 @@ resource "azurerm_storage_account" "storage" {
       days = 7  # Set the number of days you want to retain the soft deleted blobs
     }
   }
+  dynamic "customer_managed_key" {
+    for_each = var.cmk_enabled && length(trim(var.cmk_key_vault_key_id)) > 0 ? [1] : []
+    content {
+      key_vault_key_id = var.cmk_key_vault_key_id
+      user_assigned_identity_id = length(trim(var.cmk_user_assigned_identity_id)) > 0 ? var.cmk_user_assigned_identity_id : null
+    }
+  }
 #   tags = var.tags
 }

@@ -53,6 +53,24 @@ variable "storage_tier" {
   default     = "P30"
 }
 
+variable "cmk_enabled" {
+  description = "Enable customer-managed key (CMK) for PostgreSQL Flexible Server"
+  type        = bool
+  default     = false
+}
+
+variable "cmk_key_vault_key_id" {
+  description = "Full resource id of the Key Vault Key to use as CMK for PostgreSQL. If empty CMK is not applied."
+  type        = string
+  default     = ""
+}
+
+variable "cmk_user_assigned_identity_id" {
+  description = "Optional user assigned identity id that has unwrapKey permissions on the Key Vault key"
+  type        = string
+  default     = ""
+}
+
 variable "postgresql_version" {
   description = "The PostgreSQL version"
   type        = string
