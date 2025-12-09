@@ -1,8 +1,3 @@
-variable "storage_account_name" {
-  description = "The name of the storage account"
-  type        = string
-}
-
 variable "resource_group_name" {
   description = "The name of the resource group"
   type        = string
@@ -13,26 +8,56 @@ variable "location" {
   type        = string
 }
 
+variable "storage_accounts" {
+  description = "Map of storage accounts to create. Each account can have its own tier, replication, and CMK settings."
+  type = map(object({
+    account_tier                      = optional(string, "Standard")
+    account_replication_type          = optional(string, "LRS")
+    public_network_access_enabled     = optional(bool, false)
+    infrastructure_encryption_enabled = optional(bool, false)
+    cmk_enabled                       = optional(bool, false)
+    cmk_key_vault_key_id              = optional(string, "")
+    cmk_user_assigned_identity_id     = optional(string, "")
+    tags                              = optional(map(string), {})
+  }))
+  default = {}
+}
+
+variable "common_tags" {
+  description = "Common tags to apply to all storage accounts"
+  type        = map(string)
+  default     = {}
+}
+
+# Legacy single-storage inputs (deprecated)
+variable "storage_account_name" {
+  description = "(Deprecated) Use storage_accounts map instead"
+  type        = string
+  default     = ""
+}
+
 variable "account_tier" {
-  description = "The name of the account tier"
+  description = "(Deprecated) Use storage_accounts map instead"
   type        = string
   default     = "Standard"
 }
 
 variable "account_replication_type" {
-  description = "The name of the account replication type"
+  description = "(Deprecated) Use storage_accounts map instead"
   type        = string
   default     = "LRS"
 }
 
 variable "public_network_access_enabled" {
-  description = "Enable or Disable the public network access"
-  type = bool
+  description = "(Deprecated) Use storage_accounts map instead"
+  type        = bool
+  default     = false
 }
 
-variable "infrastructure_encryption_enabled"{
-  description = "Enable or Disable the Infrastructure Encryption"
-  type = bool
+variable "infrastructure_encryption_enabled" {
+  description = "(Deprecated) Use storage_accounts map instead"
+  type        = bool
+  default     = false
 }
 
 variable "cmk_enabled" {

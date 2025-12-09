@@ -1,90 +1,49 @@
 variable "resource_group_name" {
-  description = "The resource group name"
+  description = "The resource group name. Module-level default used by vaults unless overridden per-vault."
   type        = string
 }
 
 variable "location" {
-  description = "The Azure Region"
+  description = "The Azure Region. Module-level default used by vaults unless overridden per-vault."
   type        = string
 }
 
-variable "key_vault_name" {
-  description = "The name of the vault"
-  type        = string
-}
-
-variable "sku_name" {
-  description = "The name of the sku"
-  type = string
-}
-
-variable "public_network_access_enabled" {
-  description = "Enable the public network access"
-  type = bool
-}
-
-variable "soft_delete_retention_days" {
-  description = "value"
-  type = number
-}
-
-variable "purge_protection_enabled" {
-  description = "value"
-  type = bool
-  default = true
-}
-
-# variable "aks_client_id" {
-#   description = "AKS Client ID"
-  
-# }
-
-# KV_ACCESS_POLICY
-
-variable "key_vault_dependency" {
-  description = "Dependency for the Key Vault resource"
-  type        = list(any)
-}
-
-variable "key_vault_id" {
-  description = "ID of the Key Vault"
-  type        = string
-}
-
-variable "tenant_id" {
-  description = "Tenant ID"
-  type        = string
-}
-
-# variable "object_id" {
-#   description = "Object ID for the principal"
-#   type        = string
-# }
-
-# variable "key_permissions" {
-#   description = "Permissions for keys"
-#   type        = list(string)
-#   default     = ["Get"]
-# }
-
-# variable "secret_permissions" {
-#   description = "Permissions for secrets"
-#   type        = list(string)
-#   default     = ["Get"]
-# }
-
-# variable "certificate_permissions" {
-#   description = "Permissions for certificates"
-#   type        = list(string)
-#   default     = ["Get"]
-# }
-
-variable "access_policies" {
-  description = "List of access policies to be applied to the Key Vault."
-  type = list(object({
-    object_id               = string
-    key_permissions         = list(string)
-    secret_permissions      = list(string)
-    certificate_permissions = list(string)
+variable "key_vaults" {
+  description = "Map of Key Vaults to create. Each vault can have its own SKU and configuration."
+  type = map(object({
+    sku_name                      = optional(string, "standard")
+    public_network_access_enabled = optional(bool, false)
+    soft_delete_retention_days    = optional(number, 90)
+    purge_protection_enabled      = optional(bool, true)
+    tags                          = optional(map(string), {})
+    # Per-vault location and resource group removed to simplify module.
+    # Provide module-level `resource_group_name` and `location` instead (via tfvars
+    # or the module call). If you need per-vault overrides, open an issue and
+    # we can reintroduce them on demand.
+    # auth_type: "access_policy" or "rbac". If omitted, falls back to module var `default_auth_type`.
+    auth_type                     = optional(string)
+    # Optional per-vault access policies when using access_policy auth_type
+    access_policies               = optional(list(object({
+      object_id               = string
+      key_permissions         = optional(list(string), [])
+      secret_permissions      = optional(list(string), [])
+      certificate_permissions = optional(list(string), [])
+    })), [])
   }))
+  default = {}
 }
+
+variable "common_tags" {
+  description = "Common tags to apply to all key vaults"
+  type        = map(string)
+  default     = {}
+}
+# Choose default auth type when not set per-vault: "access_policy" or "rbac"
+variable "default_auth_type" {
+  description = "Default authorization type for Key Vaults when per-vault `auth_type` is not set. Valid values: 'access_policy' or 'rbac'."
+  type        = string
+  default     = "access_policy"
+}
+
+# Legacy single-vault variables removed. This module now manages one or more
+# vaults via the `key_vaults` map and reads `tenant_id` from the data source.

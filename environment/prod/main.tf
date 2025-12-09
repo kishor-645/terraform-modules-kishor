@@ -1,22 +1,116 @@
 # ========================================
-# Log Analytics Workspace
+# Resource Group
 # ========================================
-module "mylog" {
-  source = "../../modules/Log-Analytics-Workspace"
+# module "rg_single" {
+#   source = "../../modules/RG"
 
-  workspace_name      = "multirg-loganalytics-tf-test"
-  resource_group_name = "multi-region-terraform-test-rg"
-  location            = "canadacentral"
-  sku                 = "PerGB2018"
-  retention_in_days   = 30
+#   resource_groups = {
+#     "rg-test-tf" = {
+#       location = "uksouth"
+#       tags = {
+#         environment = "test"
+#       }
+#     }
+#   }
 
-  tags = {
-    Environment = "Development"
-    ManagedBy   = "Terraform"
+#   common_tags = {
+#     project     = "test"
+#     managed_by  = "terraform"
+#   }
+# }
+
+# ========================================
+# VNet and subnet using the Vnet module
+# ========================================
+# module "vnet" {
+#   source = "../../modules/Vnet"
+
+#   resource_group_name = "rg-test-tf"
+#   location            = "uksouth"
+
+#   vnets = {
+#     vnet-test-tf = {
+#       name = "vnet-test-tf"
+#       address_space = ["10.0.0.0/16"]
+#       enable_ddos_protection = false
+#       subnets = {
+#         test = {
+#           name           = "test"
+#           address_prefix = "10.0.0.0/24"
+#         }
+#       }
+#     }
+#   }
+# }
+
+# ========================================
+# Key vault HSM creation
+# ========================================
+module "kv_premium_cmk" {
+  source = "../../modules/Key-Vaults"
+
+  resource_group_name = "rg-test-tf"
+  location            = "uksouth"
+
+  key_vaults = {
+    "tf-cmk-vault-test1" = {
+      sku_name                      = "premium"  # Premium enables HSM
+      auth_type = "rbac"
+      public_network_access_enabled = true
+      soft_delete_retention_days    = 7  # Minimum required by Azure (7-90 days)
+      purge_protection_enabled      = false  # Disable purge protection to allow immediate purge after soft delete
+    }
+  }
+
+  # # Use RBAC as default for vaults created by this module
+  # default_auth_type = "rbac"
+
+  common_tags = {
+    environment = "tf-test"
+    compliance  = "pci-dss"
+  }
+}
+
+# Use vault URI with Key Vault Key resource
+resource "azurerm_key_vault_key" "tf-cmk-key" {
+  name            = "tf-cmk-key"
+  key_vault_id    = module.kv_premium_cmk.key_vaults["tf-cmk-vault-test1"].id
+  # Use HSM-backed key
+  key_type        = "RSA-HSM"
+  key_size        = 2048
+  key_opts        = ["decrypt", "encrypt", "sign", "unwrapKey", "verify", "wrapKey"]
+}
+
+
+# ========================================
+# UAI - For CMK
+# ========================================
+module "uai-cmk" {
+  source = "../../modules/User-Assigned-Identity"
+
+  identities = {
+    cmk-identity-uai = {
+      name           = ""
+      resource_group = "rg-test-tf"
+      location       = "uksouth"
+    }
   }
 }
 
 
+# ========================================
+# Role-Assignment for keyvault-CMK over identity
+# ========================================
+module "ra" {
+  source = "../../modules/Role-Assignment"
+  role_assignments = {
+    "cmk-kv-crypto-identity-role-asgmt" = {
+      role_definition_name = "Key Vault Crypto Service Encryption User"
+      principal_id = module.uai-cmk.cmk_identity-uai.principal_id
+      scope = module.kv_premium_cmk.key_vaults["tf-cmk-vault-test1"].id
+    }
+  }
+}
 
 # ========================================
 # ACR - Container Registry
@@ -24,12 +118,16 @@ module "mylog" {
 module "acr_dev" {
   source = "../../modules/Azure-Container-Registries"
 
-  acr_name                      = "acrdevtest001tftest"
-  resource_group_name           = "multi-region-terraform-test-rg"
-  location                      = "canadacentral"
+  acr_name                      = "tftestacr645"
+  resource_group_name           = "rg-test-tf"
+  location                      = "uksouth"
   sku                           = "Premium"
   admin_enabled                 = true
   public_network_access_enabled = true
+
+ # CMK Encryption
+  encryption_key_vault_key_id = azurerm_key_vault_key.tf-cmk-key.id
+  encryption_identity_id      = azurerm_user_assigned_identity.cmk-identity-uai.id
 
   tags = {
     Environment = "Development"
@@ -37,37 +135,31 @@ module "acr_dev" {
   }
 }
 
-# Diagnostic Settings for ACR
-module "acr_diagnostics" {
-  source = "../../modules/Diagnostic-Settings"
+# ========================================
+# Storage account with CMK
+# ========================================
+module "storage_cmk" {
+  source = "../../modules/Storage-Accounts"
 
-  diagnostic_setting_name = "diag-acr-test"
-  target_resource_id      = module.acr_dev.acr_id
-  log_analytics_workspace_id = module.mylog.workspace_id
+  resource_group_name = "rg-test-tf"
+  location            = "uksouth"
 
-  enabled_logs = [
-    # {
-    #   category       = "ContainerRegistryRepositoryEvents"
-    #   category_group = null
-    # },
-    # {
-    #   category       = "ContainerRegistryLoginEvents"
-    #   category_group = null
-    # },
-    {
-        category       = null
-        category_group = "audit"
+  storage_accounts = {
+    "stactftest645" = {
+      account_tier                      = "Standard"
+      account_replication_type          = "LRS"
+      infrastructure_encryption_enabled = true
+      cmk_enabled                       = true
+      cmk_key_vault_key_id              = module.key_vault_key_id["tf-cmk-key"].id
+      cmk_user_assigned_identity_id     = module.uai.identities["cmk-identity-uai"].id
+      tags = {
+        encryption = "cmk"
+      }
     }
-  ]
+  }
 
-  enabled_metrics = [
-    {
-      category = "AllMetrics"
-      enabled  = true
-    }
-  ]
-  depends_on = [
-    module.acr_dev,
-    module.mylog,
-  ]
+  common_tags = {
+    environment = "production"
+    security    = "high"
+  }
 }
