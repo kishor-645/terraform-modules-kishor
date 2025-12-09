@@ -1,31 +1,23 @@
-# ============================================================================
-# MULTI-RESOURCE OUTPUTS (Recommended)
-# ============================================================================
+# Output for the ID (Returns a Map: ACR Name => ID)
 output "acr_ids" {
-  description = "Map of ACR resource IDs indexed by registry name."
-  value       = { for name, acr in azurerm_container_registry.this : name => acr.id }
+  description = "Map of IDs for the created Container Registries"
+  value       = { for k, v in azurerm_container_registry.this : k => v.id }
 }
 
+# Output for the Login Server (Returns a Map: ACR Name => Login Server)
 output "acr_login_servers" {
-  description = "Map of ACR login servers indexed by registry name."
-  value       = { for name, acr in azurerm_container_registry.this : name => acr.login_server }
+  description = "Map of Login Servers for the created Container Registries"
+  value       = { for k, v in azurerm_container_registry.this : k => v.login_server }
 }
 
-output "registries" {
-  description = "All registry objects with full details."
-  value       = azurerm_container_registry.this
-  sensitive   = false
-}
-
-# ============================================================================
-# LEGACY SINGLE-RESOURCE OUTPUTS (Backward Compatibility - Deprecated)
-# ============================================================================
-output "acr_id" {
-  description = "(Deprecated) Use 'acr_ids' map instead."
-  value       = try(azurerm_container_registry.acr[0].id, null)
-}
-
-output "acr_login_server" {
-  description = "(Deprecated) Use 'acr_login_servers' map instead."
-  value       = try(azurerm_container_registry.acr[0].login_server, null)
+# Optional: Admin Credentials (only populated if admin_enabled is true)
+output "acr_admin_credentials" {
+  description = "Map of Admin credentials (sensitive)"
+  sensitive   = true
+  value = {
+    for k, v in azurerm_container_registry.this : k => {
+      username = v.admin_username
+      password = v.admin_password
+    }
+  }
 }

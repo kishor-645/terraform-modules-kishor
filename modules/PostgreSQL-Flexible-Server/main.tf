@@ -23,11 +23,12 @@ resource "azurerm_postgresql_flexible_server" "this" {
   }
 
   dynamic "customer_managed_key" {
-    for_each = each.value.cmk_enabled && length(trim(each.value.cmk_key_vault_key_id)) > 0 ? [1] : []
-    content {
-      key_vault_key_id = each.value.cmk_key_vault_key_id
+      for_each = each.value.cmk_enabled && length(trimspace(each.value.cmk_key_vault_key_id)) > 0 ? [1] : []
+      content {
+        key_vault_key_id                     = each.value.cmk_key_vault_key_id
+        primary_user_assigned_identity_id    = each.value.cmk_identity_id # In v4 ensure this matches your input variable name
+      }
     }
-  }
 }
 
 # Legacy single-server support (backward compatibility)

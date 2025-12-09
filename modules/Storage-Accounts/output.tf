@@ -8,9 +8,3 @@ output "storage_accounts" {
     }
   }
 }
-
-# Legacy output (backward compatibility)
-output "storage_account_id" {
-  description = "(Deprecated) Use storage_accounts output instead"
-  value       = try(azurerm_storage_account.storage[0].id, "")
-}

@@ -32,6 +32,7 @@ variable "registries" {
     cmk_enabled                   = optional(bool, false)
     cmk_key_vault_key_id          = optional(string, "")
     cmk_identity_id               = optional(string, "")
+    cmk_identity_client_id        = optional(string, "")
     tags                          = optional(map(string), {})
   }))
   default = {}
@@ -96,6 +97,12 @@ variable "encryption_key_vault_key_id" {
 
 variable "encryption_identity_id" {
   description = "(Deprecated) The resource id of a user-assigned managed identity that has access to the key vault key. Use 'registries' map instead."
+  type        = string
+  default     = null
+}
+
+variable "encryption_identity_client_id" {
+  description = "(Deprecated) The client ID of the user-assigned managed identity for CMK encryption. Use 'registries' map instead."
   type        = string
   default     = null
 }

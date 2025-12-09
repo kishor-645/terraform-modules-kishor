@@ -8,18 +8,6 @@ resource "azurerm_role_assignment" "this" {
   name         = random_uuid.ra[each.key].result
   scope        = each.value.scope
   principal_id = each.value.principal_id
-
-  dynamic "role_definition_id" {
-    for_each = each.value.role_definition_id != null ? [1] : []
-    content {
-      role_definition_id = each.value.role_definition_id
-    }
-  }
-
-  dynamic "role_definition_name" {
-    for_each = (each.value.role_definition_id == null && lookup(each.value, "role_definition_name", "") != "") ? [1] : []
-    content {
-      role_definition_name = each.value.role_definition_name
-    }
-  }
+  role_definition_id   = lookup(each.value, "role_definition_id", null)
+  role_definition_name = lookup(each.value, "role_definition_name", null)
 }
