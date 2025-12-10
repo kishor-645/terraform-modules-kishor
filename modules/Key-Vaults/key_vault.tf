@@ -18,7 +18,7 @@ resource "azurerm_key_vault" "this" {
   tags = merge(try(each.value.tags, {}), var.common_tags)
 
   # Determine effective auth type: per-vault override -> module default
-  enable_rbac_authorization = (try(each.value.auth_type, var.default_auth_type) == "rbac")
+    rbac_authorization_enabled = (try(each.value.auth_type, var.default_auth_type) == "rbac")
 
   # When using access_policy auth model, apply access_policy blocks per vault
   dynamic "access_policy" {

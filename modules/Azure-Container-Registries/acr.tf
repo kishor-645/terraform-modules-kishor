@@ -30,6 +30,7 @@ dynamic "encryption" {
     
     content {
       # only add this when ACR fail to attach with CMK (in V.3 ) -> enabled = true
+      # enabled = true
       key_vault_key_id   = each.value.cmk_key_vault_key_id
       identity_client_id = each.value.cmk_identity_client_id
     }

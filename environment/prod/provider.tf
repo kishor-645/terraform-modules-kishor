@@ -4,7 +4,7 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 4.0" # Upgrade to v4.x
+      version = "~> 4.0"
     }
     random = {
       source  = "hashicorp/random"
@@ -18,7 +18,7 @@ provider "azurerm" {
   
   features {
     resource_group {
-      # In v4, Terraform won't delete a non-empty RG by default unless this is set to false
+      # Terraform won't delete a non-empty RG by default unless this is set to false
       prevent_deletion_if_contains_resources = false
     }
     key_vault {
