@@ -1,4 +1,5 @@
 rg = "tf-rg-test"
+rg_aks_nodes = "tf-rg-aks-test"
 location = "uksouth"
 # project = "seerp1"
 # environment = "test"

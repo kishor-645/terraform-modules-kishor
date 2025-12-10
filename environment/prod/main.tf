@@ -1,127 +1,72 @@
-# 1. CREATE IDENTITIES FIRST
-module "uai_security" {
-  source = "../../modules/User-Assigned-Identity"
-  identities = {
-    id-cmk-tf  = { name = "id-cmk-tf-test", resource_group = var.rg, location = var.location }
-  }
-}
-
-# 2. CREATE KEY VAULT (Wait for identities implicitly via dependency, not strictly required yet)
-data "azurerm_client_config" "current" {}
 # ========================================
-# Key vault HSM creation
+# VNet Module
 # ========================================
-module "kv_premium" {
-  source = "../../modules/Key-Vaults"
+module "vnet" {
+  source = "../../modules/Vnet"
 
+  # Use the main RG where VNet resides
   resource_group_name = var.rg
   location            = var.location
 
-  key_vaults = {
-    "tf-cmk-vault-test3" = {
-      sku_name                      = "premium"  # Premium enables HSM
-      auth_type                     = "rbac"
-      public_network_access_enabled = true
-      soft_delete_retention_days    = 7  # Minimum required by Azure (7-90 days)
-      purge_protection_enabled      = true  # Disable purge protection to allow immediate purge after soft delete
-    }
-  }
-
-  # # Use RBAC as default for vaults created by this module
-  # default_auth_type = "rbac"
-
-  common_tags = {
-    environment = "tf-test"
-    compliance  = "pci-dss"
-  }
-}
-
-# ========================================
-# Role-Assignment for keyvault-CMK over identity
-# ========================================
-module "ra" {
-  source = "../../modules/Role-Assignment"
-  role_assignments = {
-    "cmk-kv-crypto-identity-role-asgmt" = {
-      role_definition_name = "Key Vault Crypto Service Encryption User"
-      principal_id = module.uai_security.identities["id-cmk-tf"].principal_id
-      scope = module.kv_premium.key_vaults["tf-cmk-vault-test3"].id
-    }
-    "cmk-key-reader-role-asgmt" = {
-      role_definition_name = "Key Vault Reader"
-      principal_id = module.uai_security.identities["id-cmk-tf"].principal_id
-      scope = module.kv_premium.key_vaults["tf-cmk-vault-test3"].id
-    }
-    "Keyvault-admin-on-Service-Principle" = {
-      role_definition_name = "Key Vault Administrator"
-      principal_id = data.azurerm_client_config.current.object_id
-      scope = module.kv_premium.key_vaults["tf-cmk-vault-test3"].id
-    }
-  }
-  depends_on = [module.kv_premium, module.uai_security]
-
-}
-
-
-# 4. CREATE KEY (Use 'depends_on' to ensure Admin permissions exist)
-resource "azurerm_key_vault_key" "cmk_key_tf" {
-  name         = "cmk-key-tf"
-  key_vault_id = module.kv_premium.key_vaults["tf-cmk-vault-test3"].id
-  key_type     = "RSA-HSM"
-  key_size     = 2048
-  key_opts     = ["decrypt", "encrypt", "sign", "unwrapKey", "verify", "wrapKey"]
-
-  # Terraform creates this key, so the USER running Terraform needs permissions
-  # depends_on = [azurerm_role_assignment.tf_kv_admin]
-  depends_on = [module.ra, module.kv_premium]
-
-}
-
-# 5. DEPLOY RESOURCES (Explicit dependency)
-module "acr_dev" {
-  source = "../../modules/Azure-Container-Registries"
-  
-    registries = {
-    "tftestacr999877" = {
-      resource_group_name           = var.rg
-      location                      = var.location
-      sku                           = "Premium"
-      admin_enabled                 = true
-      public_network_access_enabled = true
-
-      cmk_enabled            = true
-      cmk_key_vault_key_id   = azurerm_key_vault_key.cmk_key_tf.versionless_id
-      cmk_identity_id        = module.uai_security.identities["id-cmk-tf"].id
-      cmk_identity_client_id = module.uai_security.identities["id-cmk-tf"].client_id
-    }
-  }
-
-  # ACR cannot be created until the Key exists AND the UAI has permissions to it
-  depends_on = [azurerm_key_vault_key.cmk_key_tf]
-
-}
-# ========================================
-# Storage account with CMK
-# ========================================
-module "storage_cmk" {
-  source = "../../modules/Storage-Accounts"
-
-  resource_group_name = var.rg
-  location            = var.location
-
-  storage_accounts = {
-    "stactftest64555" = {
-      account_tier                      = "Standard"
-      account_replication_type          = "LRS"
-      infrastructure_encryption_enabled = true
-      cmk_enabled                       = true
-      cmk_key_vault_key_id              = azurerm_key_vault_key.cmk_key_tf.id
-      cmk_user_assigned_identity_id     = module.uai_security.identities["id-cmk-tf"].id
-      tags = {
-        encryption = "cmk"
+  vnets = {
+    vnet-test-tf = {
+      name = "vnet-test-tf"
+      address_space = ["10.0.0.0/16"]
+      enable_ddos_protection = false
+      subnets = {
+        aks = {
+          name           = "aks"
+          address_prefix = "10.0.0.0/22"
+        }
       }
     }
   }
+}
 
-  depends_on = [azurerm_key_vault_key.cmk_key_tf]
+# ========================================
+# AKS Module
+# ========================================
+module "aks_dev" {
+  source              = "../../modules/AKS-Cluster"
+
+  aks_clusters = {
+    "tf-aks-test" = {
+      resource_group_name = var.rg
+      location            = var.location
+      dns_prefix          = "tfakstest"
+      kubernetes_version  = "1.33.5"
+      sku_tier            = "Free"
+      
+      # HERE IS HOW YOU LINK YOUR EXISTING SECONDARY RG
+      node_resource_group     = var.rg_aks_nodes
+      
+      # Public access for dev environment
+      private_cluster_enabled = false
+
+      # Network config
+      network_plugin = "azure"
+      service_cidr   = "10.100.0.0/16"
+      dns_service_ip = "10.100.0.10"
+
+      # Reference VNet from module outputs correctly
+      # [Vnet_Key][Subnet_Key]
+      vnet_subnet_id = module.vnet.subnet_ids["vnet-test-tf"]["aks"]
+
+      default_node_pool = {
+        name                 = "agentpool"
+        node_count           = 1
+        vm_size              = "Standard_B4ms"
+        auto_scaling_enabled = false
+        # Setting zones to null/empty means "Let Azure pick" (cheaper for Dev/B-series)
+        zones                = [] 
+      }
+
+      # Identity
+      identity_type = "SystemAssigned"
+      
+      tags = { 
+        Environment = "Development" 
+      }
+    }
+  }
 }

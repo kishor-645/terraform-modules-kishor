@@ -15,3 +15,9 @@ variable location {
   default     = ""
   description = "description"
 }
+
+variable rg_aks_nodes {
+  type        = string
+  default     = ""
+  description = "description"
+}
