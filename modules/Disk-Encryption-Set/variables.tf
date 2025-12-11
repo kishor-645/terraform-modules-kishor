@@ -16,3 +16,9 @@ variable "tags" {
   type    = map(string)
   default = {}
 }
+
+variable auto_key_rotation_enabled {
+ type = bool
+ default = false
+}
+

@@ -123,7 +123,8 @@ module "aks_des" {
   resource_group_name = var.rg
   location            = var.location
   key_vault_key_id    = azurerm_key_vault_key.cmk_key_tf.versionless_id
-  
+  auto_key_rotation_enabled = true
+
   # Pass the identity you created
   identity_id         = module.uai_security.identities.cluster_identity_uai.id
 }
@@ -146,17 +147,25 @@ module "aks" {
   resource_group_name = var.rg
   node_resource_group = var.rg_aks_nodes
   location            = var.location
+  kubernetes_version  = "1.33.5"
+  sku_tier            = "Free"
   dns_prefix          = "aks-prod"
   
+  
   # Network
-  vnet_subnet_id = module.vnet.vnets["vnet-test-tf"].subnets["aks"].id
+  vnet_subnet_id = module.vnet.subnet_ids["vnet-test-tf"]["aks"]
+  
   network_profile = {
     service_cidr   = "10.100.0.0/16"
     dns_service_ip = "10.100.0.10"
-  }
+    network_plugin    = "azure"
+    network_policy    = "calico"
+    load_balancer_sku = "standard"
+    outbound_type    = "loadBalancer"
+    }
 
   # Security Config (Simply pass the ID)
-  private_cluster_enabled = false
+  private_cluster_enabled = true
   disk_encryption_set_id  = module.aks_des.id
   
   identity_id           = module.uai_security.identities.cluster_identity_uai.id
@@ -176,5 +185,5 @@ module "aks" {
     }
   }
 
-  tags = { Environment = "Production" }
+  tags = { Environment = "tfTest" }
 }

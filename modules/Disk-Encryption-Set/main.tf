@@ -3,7 +3,8 @@ resource "azurerm_disk_encryption_set" "this" {
   resource_group_name = var.resource_group_name
   location            = var.location
   key_vault_key_id    = var.key_vault_key_id
-
+  auto_key_rotation_enabled = var.auto_key_rotation_enabled
+  
   # Toggle between SystemAssigned or UserAssigned based on input
   identity {
     type         = var.identity_id != null ? "UserAssigned" : "SystemAssigned"

@@ -68,7 +68,7 @@ variable "default_node_pool" {
     enable_auto_scaling = optional(bool, true)
     min_count           = optional(number, 1)
     max_count           = optional(number, 3)
-    pod_limit           = optional(number, 110)
+    max_pods           = optional(number, 110)
   })
 }
 
@@ -83,7 +83,7 @@ variable "node_pools" {
     max_count           = optional(number, 3)
     node_taints         = optional(list(string), [])
     node_labels         = optional(map(string), {})
-    pod_limit           = optional(number, 110)
+    max_pods           = optional(number, 110)
   }))
   default = {}
 }

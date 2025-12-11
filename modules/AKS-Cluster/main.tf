@@ -21,10 +21,10 @@ resource "azurerm_kubernetes_cluster" "this" {
     vnet_subnet_id      = var.vnet_subnet_id
     zones               = var.default_node_pool.zones
     node_count          = var.default_node_pool.node_count
-    enable_auto_scaling = var.default_node_pool.enable_auto_scaling
+    auto_scaling_enabled = var.default_node_pool.enable_auto_scaling
     min_count           = var.default_node_pool.min_count
     max_count           = var.default_node_pool.max_count
-    pod_limit           = var.default_node_pool.pod_limit
+    max_pods            = var.default_node_pool.max_pods
     
     upgrade_settings {
       max_surge = "10%"
@@ -68,11 +68,11 @@ resource "azurerm_kubernetes_cluster_node_pool" "user" {
   zones          = each.value.zones
 
   # Scaling
-  enable_auto_scaling   = each.value.enable_auto_scaling
+  auto_scaling_enabled   = each.value.enable_auto_scaling
   node_count            = each.value.enable_auto_scaling ? null : each.value.node_count
   min_count             = each.value.enable_auto_scaling ? each.value.min_count : null
   max_count             = each.value.enable_auto_scaling ? each.value.max_count : null
-  pod_limit             = each.value.pod_limit
+  max_pods              = each.value.max_pods
 
   node_taints = each.value.node_taints
   node_labels = each.value.node_labels
