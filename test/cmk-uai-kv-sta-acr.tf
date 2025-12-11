@@ -2,7 +2,7 @@
 module "uai_security" {
   source = "../../modules/User-Assigned-Identity"
   identities = {
-    id-cmk-tf  = { name = "id-cmk-tf-test", resource_group = var.rg, location = var.location }
+    (var.uai_id_cmk)  = { name = "id-cmk-tf-test", resource_group = var.rg, location = var.location }
   }
 }
 
@@ -18,7 +18,7 @@ module "kv_premium" {
   location            = var.location
 
   key_vaults = {
-    "tf-cmk-vault-test3" = {
+    (var.cmk_kv) = {
       sku_name                      = "premium"  # Premium enables HSM
       auth_type                     = "rbac"
       public_network_access_enabled = true
@@ -44,18 +44,18 @@ module "ra" {
   role_assignments = {
     "cmk-kv-crypto-identity-role-asgmt" = {
       role_definition_name = "Key Vault Crypto Service Encryption User"
-      principal_id = module.uai_security.identities["id-cmk-tf"].principal_id
-      scope = module.kv_premium.key_vaults["tf-cmk-vault-test3"].id
+      principal_id = module.uai_security.identities[var.uai_id_cmk].principal_id
+      scope = module.kv_premium.key_vaults[var.cmk_kv].id
     }
     "cmk-key-reader-role-asgmt" = {
       role_definition_name = "Key Vault Reader"
-      principal_id = module.uai_security.identities["id-cmk-tf"].principal_id
-      scope = module.kv_premium.key_vaults["tf-cmk-vault-test3"].id
+      principal_id = module.uai_security.identities[var.uai_id_cmk].principal_id
+      scope = module.kv_premium.key_vaults[var.cmk_kv].id
     }
     "Keyvault-admin-on-Service-Principle" = {
       role_definition_name = "Key Vault Administrator"
       principal_id = data.azurerm_client_config.current.object_id
-      scope = module.kv_premium.key_vaults["tf-cmk-vault-test3"].id
+      scope = module.kv_premium.key_vaults[var.cmk_kv].id
     }
   }
   depends_on = [module.kv_premium, module.uai_security]
@@ -65,8 +65,8 @@ module "ra" {
 
 # 4. CREATE KEY (Use 'depends_on' to ensure Admin permissions exist)
 resource "azurerm_key_vault_key" "cmk_key_tf" {
-  name         = "cmk-key-tf"
-  key_vault_id = module.kv_premium.key_vaults["tf-cmk-vault-test3"].id
+  name         = var.cmk_kv_key
+  key_vault_id = module.kv_premium.key_vaults[var.cmk_kv].id
   key_type     = "RSA-HSM"
   key_size     = 2048
   key_opts     = ["decrypt", "encrypt", "sign", "unwrapKey", "verify", "wrapKey"]
@@ -77,7 +77,7 @@ resource "azurerm_key_vault_key" "cmk_key_tf" {
 
 }
 
-# 5. DEPLOY RESOURCES (Explicit dependency)
+# DEPLOY RESOURCES (Explicit dependency)
 module "acr_dev" {
   source = "../../modules/Azure-Container-Registries"
   
@@ -90,9 +90,9 @@ module "acr_dev" {
       public_network_access_enabled = true
 
       cmk_enabled            = true
-      cmk_key_vault_key_id   = azurerm_key_vault_key.cmk_key_tf.versionless_id
-      cmk_identity_id        = module.uai_security.identities["id-cmk-tf"].id
-      cmk_identity_client_id = module.uai_security.identities["id-cmk-tf"].client_id
+      cmk_key_vault_key_id   = azurerm_key_vault_key.(var.cmk_kv_key).versionless_id
+      cmk_identity_id        = module.uai_security.identities[var.uai_id_cmk].id
+      cmk_identity_client_id = module.uai_security.identities[var.uai_id_cmk].client_id
     }
   }
 
@@ -115,8 +115,8 @@ module "storage_cmk" {
       account_replication_type          = "LRS"
       infrastructure_encryption_enabled = true
       cmk_enabled                       = true
-      cmk_key_vault_key_id              = azurerm_key_vault_key.cmk_key_tf.id
-      cmk_user_assigned_identity_id     = module.uai_security.identities["id-cmk-tf"].id
+      cmk_key_vault_key_id              = azurerm_key_vault_key.(var.cmk_kv_key).id
+      cmk_user_assigned_identity_id     = module.uai_security.identities[var.uai_id_cmk].id
       tags = {
         encryption = "cmk"
       }

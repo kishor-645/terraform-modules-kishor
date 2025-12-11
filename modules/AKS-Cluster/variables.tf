@@ -1,70 +1,89 @@
-variable "aks_clusters" {
-  description = "Map of AKS Clusters to create."
-  type = map(object({
-    resource_group_name = optional(string, null)
-    location            = optional(string, null)
+# Core Settings
+variable "name" { type = string }
+variable "resource_group_name" { type = string }
+variable "node_resource_group" { type = string }
+variable "location" { type = string }
+variable "dns_prefix" { type = string }
+variable "kubernetes_version" { default = "1.29" }
+variable "sku_tier" { default = "Standard" }
+variable "tags" { type = map(string) }
 
-    kubernetes_version      = optional(string, "1.29")
-    dns_prefix              = string
-    sku_tier                = optional(string, "Free") # Use 'Free' for Dev, 'Standard' for Prod
-    private_cluster_enabled = optional(bool, false)
-    
-    # CRITICAL: Add this line to allow defining the secondary RG
-    node_resource_group     = optional(string, null) 
-
-    # Network
-    network_plugin          = optional(string, "azure")
-    network_policy          = optional(string, "azure")
-    vnet_subnet_id          = string 
-    service_cidr            = optional(string, "10.0.0.0/16")
-    dns_service_ip          = optional(string, "10.0.0.10")
-    outbound_type           = optional(string, "LoadBalancer")
-    load_balancer_sku       = optional(string, "Standard")
-    
-    # Default Node Pool
-    default_node_pool = object({
-      name                 = string
-      vm_size              = optional(string, "Standard_B4ms") # B-series for Dev
-      node_count           = optional(number, 1)
-      auto_scaling_enabled = optional(bool, false)
-      min_count            = optional(number, 1)
-      max_count            = optional(number, 3)
-      zones                = optional(list(string), null) # Null = No specific zone
-    })
-
-    # Identity
-    identity_type             = optional(string, "SystemAssigned")
-    user_assigned_identity_id = optional(string, null)
-
-    # CMK & Tags
-    cmk_enabled          = optional(bool, false)
-    cmk_key_vault_key_id = optional(string, null)
-    des_identity_id      = optional(string, null)
-  }))
+# Toggle Features
+variable "private_cluster_enabled" { 
+  type    = bool
+  default = false
 }
 
-variable "common_tags" {
-  description = "Common tags to be applied to all resources"
-  type        = map(string)
-  default     = {}
+variable "rbac_enabled" { 
+  type    = bool
+  default = false
+}
+
+variable "azure_policy_enabled" { 
+  type    = bool
+  default = false
+}
+
+# Identity
+variable "identity_id" { 
+  description = "User Assigned Identity ID. Null = SystemAssigned"
+  type        = string
+  default     = null 
+}
+variable "identity_principal_id" { 
+  description = "Principal ID of UAI (required for role assignment if UAI is used)"
+  type        = string 
+  default     = null 
+}
+
+# Security
+variable "disk_encryption_set_id" {
+  description = "ID of DES for CMK. Leave null if CMK not required."
+  type        = string
+  default     = null
+}
+
+# Network
+variable "vnet_subnet_id" { type = string }
+
+variable "network_profile" {
+  type = object({
+    network_plugin    = optional(string, "azure")
+    network_policy    = optional(string, "azure")
+    load_balancer_sku = optional(string, "Standard")
+    outbound_type     = optional(string, "loadBalancer")
+    dns_service_ip    = optional(string, "10.0.0.10")
+    service_cidr      = optional(string, "10.0.0.0/16")
+  })
+  default = {} 
+}
+
+# Node Pools
+variable "default_node_pool" {
+  type = object({
+    name                = string
+    vm_size             = string
+    zones               = optional(list(string), ["1", "2", "3"])
+    node_count          = optional(number, 1)
+    enable_auto_scaling = optional(bool, true)
+    min_count           = optional(number, 1)
+    max_count           = optional(number, 3)
+    pod_limit           = optional(number, 110)
+  })
 }
 
 variable "node_pools" {
-  description = "Map of additional node pools to create"
+  description = "Map of additional node pools"
   type = map(object({
-    cluster_name         = string
-    name                 = string
-    vm_size              = string
-    mode                 = optional(string, "User")
-    os_type              = optional(string, "Linux")
-    zones                = optional(list(string), null)
-    vnet_subnet_id       = optional(string, null)
-    auto_scaling_enabled = optional(bool, false)
-    node_count           = optional(number, 1)
-    min_count            = optional(number, 1)
-    max_count            = optional(number, 3)
-    node_taints          = optional(list(string), [])
-    node_labels          = optional(map(string), {})
+    vm_size             = string
+    zones               = optional(list(string), ["1", "2", "3"])
+    node_count          = optional(number, 1)
+    enable_auto_scaling = optional(bool, true)
+    min_count           = optional(number, 1)
+    max_count           = optional(number, 3)
+    node_taints         = optional(list(string), [])
+    node_labels         = optional(map(string), {})
+    pod_limit           = optional(number, 110)
   }))
   default = {}
 }
