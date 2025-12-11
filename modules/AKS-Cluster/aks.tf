@@ -33,8 +33,8 @@ resource "azurerm_kubernetes_cluster" "this" {
   network_profile {
     network_plugin    = each.value.network_plugin
     network_policy    = each.value.network_policy
-    load_balancer_sku = "standard"
-    outbound_type     = "loadBalancer"
+    load_balancer_sku = each.value.load_balancer_sku != null ? each.value.load_balancer_sku : "Standard"
+    outbound_type     = each.value.outbound_type != null ? each.value.outbound_type : "LoadBalancer"
     dns_service_ip    = each.value.dns_service_ip
     service_cidr      = each.value.service_cidr
   }

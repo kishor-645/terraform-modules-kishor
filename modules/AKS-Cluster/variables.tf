@@ -18,6 +18,8 @@ variable "aks_clusters" {
     vnet_subnet_id          = string 
     service_cidr            = optional(string, "10.0.0.0/16")
     dns_service_ip          = optional(string, "10.0.0.10")
+    outbound_type           = optional(string, "LoadBalancer")
+    load_balancer_sku       = optional(string, "Standard")
     
     # Default Node Pool
     default_node_pool = object({
