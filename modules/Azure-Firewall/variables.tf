@@ -19,6 +19,10 @@ variable "firewall_sku_tier" {
   description = "Firewall SKU tier (Standard, Premium, Basic)"
   type        = string
   default     = "Standard"
+  validation {
+    condition     = contains(["Basic", "Standard", "Premium"], var.firewall_sku_tier)
+    error_message = "SKU must be one of: Basic, Standard, Premium."
+  }
 }
 
 variable "private_ip_ranges" {
