@@ -250,14 +250,6 @@ module "firewall" {
   ]
 }
 
-
-
-
-
-
-
-
-
 # 1. CREATE IDENTITIES FIRST
 module "uai_security" {
   source = "../../modules/User-Assigned-Identity"
@@ -407,7 +399,7 @@ module "aks" {
     network_plugin    = "azure"
     network_policy    = "calico"
     load_balancer_sku = "standard"
-    outbound_type    = "loadBalancer"
+    outbound_type    = "userDefinedRouting"
     }
 
   # Security Config (Simply pass the ID)
