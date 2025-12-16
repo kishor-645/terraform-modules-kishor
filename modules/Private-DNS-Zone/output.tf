@@ -1,3 +1,4 @@
-output "dns_zone_id" {
-  value = azurerm_private_dns_zone.private_dns_zone.id
+output "dns_zone_ids" {
+  description = "Map of DNS Zone Names to their Resource IDs"
+  value       = { for k, v in azurerm_private_dns_zone.this : k => v.id }
 }

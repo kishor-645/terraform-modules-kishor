@@ -38,6 +38,7 @@ resource "azurerm_kubernetes_cluster" "this" {
 
   network_profile {
     network_plugin    = var.network_profile.network_plugin
+    network_plugin_mode = var.network_profile.network_plugin_mode
     network_policy    = var.network_profile.network_policy
     load_balancer_sku = var.network_profile.load_balancer_sku
     outbound_type     = var.network_profile.outbound_type

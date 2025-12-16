@@ -193,7 +193,7 @@ module "firewall" {
       destination_fqdns = [
         "management.azure.com",
         "login.microsoftonline.com",
-        "*.ods.opinsights.azure.com", # Azure Monitor
+        "*.ods.opinsights.azure.com",
         "*.oms.opinsights.azure.com",
         "dc.services.visualstudio.com"
       ]

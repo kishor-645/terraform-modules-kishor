@@ -49,6 +49,7 @@ variable "vnet_subnet_id" { type = string }
 variable "network_profile" {
   type = object({
     network_plugin    = optional(string, "azure")
+    network_plugin_mode = optional(string, "overlay")
     network_policy    = optional(string, "azure")
     load_balancer_sku = optional(string, "Standard")
     outbound_type     = optional(string, "loadBalancer")
