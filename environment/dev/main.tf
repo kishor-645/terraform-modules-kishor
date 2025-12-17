@@ -226,7 +226,6 @@ module "jumpbox_public" {
     }
   ]
  depends_on = [module.vnet]
-
 }
 
 
@@ -535,9 +534,44 @@ module "ra-aks" {
 }
 
 
+module "udr_spoke" {
+  source              = "../../modules/Route-Table"
+  name                = var.route_table_name
+  resource_group_name = var.rg
+  location            = var.location
+
+  bgp_route_propagation_enabled = false
+
+  # 1. Define Routes
+  routes = {
+    "default-to-firewall" = {
+      address_prefix         = "0.0.0.0/0"
+      next_hop_type          = "VirtualAppliance"
+      next_hop_in_ip_address = module.firewall.firewall_private_ip
+    },
+    "private-traffic" = {
+      # Optional: Specific bypass route if needed
+      address_prefix = "10.0.0.0/16"
+      next_hop_type  = "VnetLocal"
+    }
+  }
+
+  # 2. Associate to Subnets
+  subnet_ids = {
+    "aks-subnet" = module.vnet.subnet_ids[var.vnet][var.aks_subnet],
+    "private-endpoint-subnet" = module.vnet.subnet_ids[var.vnet][var.private_endpoint_subnet]
+  }
+  depends_on = [module.vnet, module.firewall]
+}
+
+# ========================================
+# AKS Cluster with Disk Encryption Set (CMK)
+# ========================================
 # Create Disk Encryption Set (Call the NEW Module)
 module "aks_des" {
   source = "../../modules/Disk-Encryption-Set"
+
+  depends_on = [ module.ra-aks, azurerm_key_vault_key.cmk_key_tf ]
   
   name                = var.des_name
   resource_group_name = var.rg
@@ -546,7 +580,7 @@ module "aks_des" {
   auto_key_rotation_enabled = true
 
   # Pass the identity you created
-  identity_id         = module.uai_security.identities[var.cluster_identity_uai].id
+  identity_id         = module.uai_security.identities[var.uai_id_cmk].id
 }
 
 resource "azurerm_role_assignment" "aks_contributor_on_des" {
@@ -561,7 +595,7 @@ resource "azurerm_role_assignment" "aks_contributor_on_des" {
 module "aks" {
   source = "../../modules/AKS-Cluster"
   
-  depends_on = [ azurerm_role_assignment.aks_contributor_on_des ]
+  depends_on = [ azurerm_role_assignment.aks_contributor_on_des, module.ra-aks, module.udr_spoke ]
 
   name                = var.aks_name
   resource_group_name = var.rg
@@ -582,7 +616,7 @@ module "aks" {
     network_plugin_mode = "overlay"
     network_policy    = "calico"
     load_balancer_sku = "standard"
-    outbound_type    = "loadBalancer"
+    outbound_type    = "userDefinedRouting"
     }
 
   # Security Config (Simply pass the ID)
@@ -608,3 +642,4 @@ module "aks" {
 
   tags = { Environment = "tfTest" }
 }
+

@@ -126,3 +126,9 @@ variable pe_stg_file {
   default     = ""
   description = "Private endpoint name for Storage File"
 }
+
+variable route_table_name {
+  type        = string
+  default     = ""
+  description = "Route table name for AKS subnet"
+}
