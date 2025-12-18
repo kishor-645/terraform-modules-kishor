@@ -1,17 +1,18 @@
 #Common variables
-rg = "tf-rg-123"
+rg = "tf-rg-2001"
 location = "uksouth"
 vnet = "vnet-test-tf"
 jumpbox_subnet = "jumpbox-subnet"
 private_endpoint_subnet = "private-endpoints"
+agfc_subnet = "agfc-subnet"
 
 
-cmk_kv = "kv-tf-cmk-123"
+cmk_kv = "kv-tf-cmk-2001"
 cmk_kv_key = "cmk-key-tf"
 uai_id_cmk = "uai-cmk-tf"
 
-storage_account = "sttfcmk123"
-acr_name = "acrtfcmk123"
+storage_account = "sttfcmk2001"
+acr_name = "acrtfcmk2001"
 
 pe_kv = "pe-kv-tf"
 pe_acr = "pe-acr-tf"
@@ -20,11 +21,11 @@ pe_stg_file = "pe-stg-file-tf"
 
 
 #AKS related variables
+aks_name = "tf-aks-2002"
 aks_subnet = "aks-subnet"
 cluster_identity_uai = "aks-cluster-identity-uai"
-rg_aks_nodes = "aks-nodes-rg-tf-test"
+rg_aks_nodes = "aks-nodes-rg-tf-2002"
 user_pool = "workload01"
-aks_name = "aks-tf-test-cmk"
 des_name = "des-aks-tf-test"
 
 

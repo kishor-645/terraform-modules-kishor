@@ -10,7 +10,7 @@ module "vnet" {
 
   vnets = {
     vnet-test-tf = {
-      name = "vnet-test-tf"
+      name = var.vnet
       address_space = ["10.0.0.0/16"]
       enable_ddos_protection = false
       subnets = {
@@ -31,6 +31,17 @@ module "vnet" {
           name           = var.aks_subnet
           address_prefix = "10.0.100.0/22"
         
+        }
+        (var.agfc_subnet) = {
+          name           = var.agfc_subnet
+          address_prefix = "10.0.3.0/24"
+          delegation = {
+            name = var.agfc_subnet
+            service_delegation = {
+              name    = "Microsoft.ServiceNetworking/trafficControllers"
+              actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
+            }
+          }
         }
       }
     }
@@ -513,26 +524,6 @@ module "firewall" {
 }
 
 
-# ========================================
-# Role-Assignment for Cluster Identity over keyvault-CMK
-# ========================================
-module "ra-aks" {
-  source = "../../modules/Role-Assignment"
-  role_assignments = {
-    "cmk-kv-crypto-identity-role-asgmt-cluster-uai" = {
-      role_definition_name = "Key Vault Crypto Service Encryption User"
-      principal_id = module.uai_security.identities[var.cluster_identity_uai].principal_id
-      scope = module.kv_premium.key_vaults[var.cmk_kv].id
-    }
-    "cmk-key-reader-role-asgmt-cluster-uai" = {
-      role_definition_name = "Key Vault Reader"
-      principal_id = module.uai_security.identities[var.cluster_identity_uai].principal_id
-      scope = module.kv_premium.key_vaults[var.cmk_kv].id
-    }
-  }
-  depends_on = [module.kv_premium, module.uai_security]
-}
-
 
 module "udr_spoke" {
   source              = "../../modules/Route-Table"
@@ -549,6 +540,21 @@ module "udr_spoke" {
       next_hop_type          = "VirtualAppliance"
       next_hop_in_ip_address = module.firewall.firewall_private_ip
     },
+
+    # -------------------------------------------------------------
+    # 2. THE TEMPORARY BYPASS (Creation Fix)
+    # These two routes cover the whole internet but are more specific 
+    # than /0, so they override the firewall route automatically.
+    # -------------------------------------------------------------
+    "temp-bypass-lower-half" = {
+      address_prefix = "0.0.0.0/1"
+      next_hop_type  = "Internet"
+    },
+    "temp-bypass-upper-half" = {
+      address_prefix = "128.0.0.0/1"
+      next_hop_type  = "Internet"
+    },
+
     "private-traffic" = {
       # Optional: Specific bypass route if needed
       address_prefix = "10.0.0.0/16"
@@ -571,7 +577,7 @@ module "udr_spoke" {
 module "aks_des" {
   source = "../../modules/Disk-Encryption-Set"
 
-  depends_on = [ module.ra-aks, azurerm_key_vault_key.cmk_key_tf ]
+  depends_on = [ azurerm_key_vault_key.cmk_key_tf ]
   
   name                = var.des_name
   resource_group_name = var.rg
@@ -595,17 +601,22 @@ resource "azurerm_role_assignment" "aks_contributor_on_des" {
 module "aks" {
   source = "../../modules/AKS-Cluster"
   
-  depends_on = [ azurerm_role_assignment.aks_contributor_on_des, module.ra-aks, module.udr_spoke ]
+  depends_on = [ azurerm_role_assignment.aks_contributor_on_des, module.udr_spoke ]
 
   name                = var.aks_name
   resource_group_name = var.rg
   node_resource_group = var.rg_aks_nodes
   location            = var.location
   kubernetes_version  = "1.33.5"
-  sku_tier            = "Free"
+  sku_tier            = "Standard"
   dns_prefix          = "aks-prod"
+
+  rbac_enabled = true
   
-  
+  # --- ENABLE SECURITY FEATURES ---
+  oidc_issuer_enabled       = true
+  workload_identity_enabled = true
+
   # Network
   vnet_subnet_id = module.vnet.subnet_ids[var.vnet][var.aks_subnet]
   
@@ -616,7 +627,7 @@ module "aks" {
     network_plugin_mode = "overlay"
     network_policy    = "calico"
     load_balancer_sku = "standard"
-    outbound_type    = "userDefinedRouting"
+    outbound_type    = "loadBalancer"
     }
 
   # Security Config (Simply pass the ID)
@@ -642,4 +653,3 @@ module "aks" {
 
   tags = { Environment = "tfTest" }
 }
-

@@ -132,3 +132,9 @@ variable route_table_name {
   default     = ""
   description = "Route table name for AKS subnet"
 }
+
+variable agfc_subnet {
+  type        = string
+  default     = ""
+  description = "AGFC subnet name"
+}

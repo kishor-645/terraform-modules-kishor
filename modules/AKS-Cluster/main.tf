@@ -12,6 +12,10 @@ resource "azurerm_kubernetes_cluster" "this" {
   role_based_access_control_enabled = var.rbac_enabled
   azure_policy_enabled              = var.azure_policy_enabled
 
+  # To enable OIDC Issuer and Workload Identity
+  oidc_issuer_enabled       = var.oidc_issuer_enabled
+  workload_identity_enabled = var.workload_identity_enabled
+
   # Connect to DES if ID is provided (For CMK)
   disk_encryption_set_id = var.disk_encryption_set_id
 

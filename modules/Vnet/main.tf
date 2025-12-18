@@ -26,8 +26,19 @@ resource "azurerm_virtual_network" "vnet" {
   dynamic "subnet" {
     for_each = each.value.subnets
     content {
-      name             = subnet.value.name
+      name           = subnet.value.name
       address_prefixes = [subnet.value.address_prefix]
+
+      dynamic "delegation" {
+        for_each = subnet.value.delegation != null ? [subnet.value.delegation] : []
+        content {
+          name = delegation.value.name
+          service_delegation {
+            name    = delegation.value.service_delegation.name
+            actions = delegation.value.service_delegation.actions
+          }
+        }
+      }
     }
   }
 }

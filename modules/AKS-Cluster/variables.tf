@@ -88,3 +88,15 @@ variable "node_pools" {
   }))
   default = {}
 }
+
+variable "oidc_issuer_enabled" {
+  description = "Enable OpenID Connect (OIDC) Issuer"
+  type        = bool
+  default     = true # Recommend default true for modern clusters
+}
+
+variable "workload_identity_enabled" {
+  description = "Enable Entra ID Workload Identity"
+  type        = bool
+  default     = true
+}
