@@ -132,3 +132,15 @@ variable route_table_name {
   default     = ""
   description = "Route table name for AKS subnet"
 }
+
+variable vnet_spoke {
+  type        = string
+  default     = ""
+  description = "Spoke Virtual network name"
+}
+
+variable db_password {
+  type        = string
+  default     = ""
+  description = "PostgreSQL admin password"
+}

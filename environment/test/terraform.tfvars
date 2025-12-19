@@ -1,10 +1,12 @@
 #Common variables
-rg = "tf-rg-123"
+rg = "tf-rg-2003"
 location = "uksouth"
-vnet = "vnet-test-tf"
+vnet = "vnet-test-tf1"
 jumpbox_subnet = "jumpbox-subnet"
 private_endpoint_subnet = "private-endpoints"
+vnet_spoke = "vnet-spoke-tf2"
 
+db_password = "gvY1Sf3x5O82"
 
 cmk_kv = "kv-tf-cmk-123"
 cmk_kv_key = "cmk-key-tf"

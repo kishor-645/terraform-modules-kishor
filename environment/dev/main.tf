@@ -32,22 +32,10 @@ module "vnet" {
           address_prefix = "10.0.100.0/22"
         
         }
-        (var.agfc_subnet) = {
-          name           = var.agfc_subnet
-          address_prefix = "10.0.3.0/24"
-          delegation = {
-            name = var.agfc_subnet
-            service_delegation = {
-              name    = "Microsoft.ServiceNetworking/trafficControllers"
-              actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
-            }
-          }
-        }
       }
     }
   }
 }
-
 
 # ========================================
 # Private DNS Zones & VNet Linking
@@ -601,7 +589,10 @@ resource "azurerm_role_assignment" "aks_contributor_on_des" {
 module "aks" {
   source = "../../modules/AKS-Cluster"
   
-  depends_on = [ azurerm_role_assignment.aks_contributor_on_des, module.udr_spoke ]
+  #depends_on = [ azurerm_role_assignment.aks_contributor_on_des, module.udr_spoke ]
+  
+  depends_on = [module.vnet ]
+
 
   name                = var.aks_name
   resource_group_name = var.rg
@@ -609,9 +600,9 @@ module "aks" {
   location            = var.location
   kubernetes_version  = "1.33.5"
   sku_tier            = "Standard"
-  dns_prefix          = "aks-prod"
+  dns_prefix          = "aks-dns"
 
-  rbac_enabled = true
+  #rbac_enabled = true
   
   # --- ENABLE SECURITY FEATURES ---
   oidc_issuer_enabled       = true
@@ -627,15 +618,15 @@ module "aks" {
     network_plugin_mode = "overlay"
     network_policy    = "calico"
     load_balancer_sku = "standard"
-    outbound_type    = "loadBalancer"
+    outbound_type    = "ueserDefinedRouting"
     }
 
   # Security Config (Simply pass the ID)
-  private_cluster_enabled = true
-  disk_encryption_set_id  = module.aks_des.id
+  private_cluster_enabled = false
+  # disk_encryption_set_id  = module.aks_des.id
   
-  identity_id           = module.uai_security.identities[var.cluster_identity_uai].id
-  identity_principal_id = module.uai_security.identities[var.cluster_identity_uai].principal_id
+  # identity_id           = module.uai_security.identities[var.cluster_identity_uai].id
+  # identity_principal_id = module.uai_security.identities[var.cluster_identity_uai].principal_id
 
   default_node_pool = {
     name                = "system"
