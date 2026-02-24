@@ -1,6 +1,6 @@
 # Terraform Modules for Azure
 
-This repository contains reusable Terraform modules and environment-level root configurations for Azure infrastructure.
+This repository contains reusable Terraform modules and environment-level root configuration for Azure infrastructure.
 
 ## Repository layout
 
@@ -8,9 +8,7 @@ This repository contains reusable Terraform modules and environment-level root c
 terraform-modules-kishor/
 ├── modules/                # Reusable Terraform modules
 ├── environment/
-│   ├── dev/                # Root module for dev-style deployment
-│   └── test/               # Root module for test-style deployment
-└── test/                   # Extra standalone Terraform examples
+│   └── dev/                # Root module for deployment
 ```
 
 ## Prerequisites
@@ -22,12 +20,10 @@ terraform-modules-kishor/
 
 ## Simple steps to use
 
-1. Go to the environment you want to deploy.
+1. Go to the deployment root module.
 
 ```bash
 cd environment/dev
-# or
-cd environment/test
 ```
 
 2. Set your Azure subscription in `provider.tf` (`subscription_id = "..."`).
@@ -49,7 +45,7 @@ terraform destroy -auto-approve
 
 ## How this code is organized
 
-- `environment/dev/main.tf` and `environment/test/main.tf` are composition layers that call modules from `../../modules/*`.
+- `environment/dev/main.tf` is the root composition layer that calls modules from `../../modules/*`.
 - Most modules are built for reusability with maps and `for_each`.
 - Module inputs are defined in each module `variables.tf`.
 - Module outputs are exposed from each module `output.tf`/`outputs.tf`.
@@ -83,12 +79,11 @@ terraform destroy -auto-approve
 ## Notes
 
 - `environment/dev` focuses on end-to-end stack composition with CMK, identities, AKS, private endpoints, and routing.
-- `environment/test` includes hub-spoke VNet peering and PostgreSQL private networking examples.
-- `test/` folder has standalone Terraform examples for specific scenarios.
+- This repository currently uses only one root environment (`environment/dev`).
 
 ## Recommended workflow for changes
 
 1. Update a module in `modules/<module-name>/`.
-2. Validate that module in a root environment (`environment/dev` or `environment/test`).
+2. Validate that module in the root environment (`environment/dev`).
 3. Run `terraform plan` before applying.
 4. Keep secrets out of version control (for example: database passwords in `terraform.tfvars`).
